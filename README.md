@@ -71,24 +71,9 @@ fun pickup(r :: Row) -> Boolean:
   end
 end
 
-fun chk-dlv-stat(t :: Table) -> Table:
-  doc: "function for creating a table to work with"
-  transform-column(t, "delivery", pickup)
-end
 
-will-pickup = build-column(cleaned-data, "will-pickup", pickup)
 
-pickup-list = cleaned-data.get-column("names")
 
-fun yes-pickup(pickup-list :: List) -> List:
-  map(lam(p): if (p == "pickup"):
-        pickup-list = cleaned-data.get-column("names")
-    else:
-      p
-    end
-  end, pickup-list)
-end
-#L.filter(lam(p): (p == "pickup") end, pickup-list)
 
 
 

@@ -19,49 +19,16 @@ cleaned-data =
     sanitize delivery using string-sanitizer
   end
 
-codes = cleaned-data.get-column("discount")
+event-data =
+  load-table: name, email, tickcount, discount, delivery
+    source: load-spreadsheet(ssid).sheet-by-name("Data", true)
+    sanitize name using string-sanitizer
+    sanitize email using string-sanitizer
+    sanitize tickcount using num-sanitizer
+    sanitize discount using string-sanitizer
+    sanitize delivery using string-sanitizer
+  end
 
-L.distinct(codes)
-
-#select-column makes a table
-select-columns(cleaned-data, [list: "tickcount"])
-
-#get-column makes a list
-tickcounts = cleaned-data.get-column("tickcount")
-
-fun real-code(c :: String) -> Boolean:
-  not(c == "none")
-end
-L.filter(real-code, codes)
-#L.filter(lam(c): not(c == "none") end, codes)
-
-fun low-case(c :: String) -> Boolean:
-  not(c == string-to-lower("none"))
-end
-L.filter(low-case, codes)
-
-fun web-com-address(email :: String) -> Boolean:
-  doc: "determine whether email is from web.com"
-  string-split(email, "@").get(1) == "web.com"
-where:
-  web-com-address("bonnie@pyret.org") is false
-  web-com-address("parrot@web.com") is true
-end
-
-emails = cleaned-data.get-column("email")
-
-L.length(L.filter(web-com-address, emails))
-
-fun extract-username(email :: String) -> String:
-  doc: "extract the portion of an email address before the @ sign"
-  string-split(email, "@").get(0)
-where:
-  extract-username("bonnie@pyret.org") is "bonnie"
-  extract-username("parrot@web.com") is "parrot"
-end
-
-L.map(extract-username,
-  [list: "parrot@web.com", "bonnie@pyret.org"])
 
 fun equal-pickup(r :: Row) -> Boolean:
   r["delivery"] == "pickup"
@@ -69,46 +36,64 @@ where:
   equal-pickup(cleaned-data.row-n(0)) is false
   equal-pickup(cleaned-data.row-n(6)) is true
 end
+
 #creates table 
 pickup-table = filter-with(cleaned-data, equal-pickup)
+
 #creates list from new table
 pickup-list = pickup-table.get-column("name")
 
 
+fun org-address(email :: String) -> String:
+  doc: "determine whether email has .org"
+  string-split(email, ".").get(1)
+where:
+  org-address("bonnie@pyret.org") is "org"
+  org-address("parrot@web.com") is "com"
+end 
+  
 
-
-
-
-
-stir-fry =
-  [list: "peppers", "pork", "onions", "rice"]
-dosa = [list: "rice", "lentils", "potato"]
-misir-wot =
-  [list: "lentils", "berbere", "tomato"]
-
-examples:
-  recipes-uses(stir-fry, "pork") is true
-  recipes-uses(stir-fry, "tomato") is false
+#finds if email has org
+fun web-com-address(email :: String) -> Boolean:
+  doc: "determine whether email is from org"
+   string-split(email, ".").get(1) == "org"
+where:
+  web-com-address("bonnie@pyret.org") is true
+  web-com-address("parrot@web.com") is false
 end
 
-fun recipes-uses(lst :: List<String>, ing :: String) -> Boolean:
-  filter(lam(x):
-      x == ing
-    end, lst).length() > 0
-end
 
-fun make-veg(lst :: List<String>) -> List<String>:
-  map(lam(x):
-      if (x == "pork") or (x == "beef") or (x == "chicken"):
-      "tofu"
+#takes avg tickcounts of emails ending in org 
+email-tick-count-org =
+    add-row(
+    add-row(cleaned-data.empty(),
+      cleaned-data.row-n(2)),
+    cleaned-data.row-n(6))
+#creates list 
+tickcounts = email-tick-count-org.get-column("tickcount")
+S.median(tickcounts)
+
+
+
+#function that checks if tickcount is gt 8 and contains org
+fun greater-than-8-tc(r :: Row) -> Boolean:
+  if (r["tickcount"] > 8) and (string-contains(r["email"], "org")):
+    true
     else:
-      x
-    end
-  end, lst)
+    false
+  end
+where:
+  greater-than-8-tc(event-data.row-n(0)) is false
+  greater-than-8-tc(event-data.row-n(1)) is false
 end
 
-fun pro-veg-count(lst :: List<String>) -> Number:
-  filter(lam(x):
-      not((x == "rice") or (x == "noodles"))
-    end, lst).length()
-end
+  
+#creates table showing all names with a tickcount gt 8
+gt-8-tc = filter-with(event-data, greater-than-8-tc)
+
+print(gt-8-tc)
+#finds number of rows in table with gt 8 tc and org email
+gt-8-tc.length()
+#converts above to list and does the same
+emails = gt-8-tc.get-column("email")
+L.length(L.filter(org-address, emails))

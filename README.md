@@ -63,13 +63,16 @@ end
 L.map(extract-username,
   [list: "parrot@web.com", "bonnie@pyret.org"])
 
-fun pickup(r :: Row) -> Boolean:
-  doc: "determines if they will pickup ticket"
-  will-pickup = r["delivery"]
-  if will-pickup == "pickup": true
-  else: false
-  end
+fun equal-pickup(r :: Row) -> Boolean:
+  r["delivery"] == "pickup"
+where:
+  equal-pickup(cleaned-data.row-n(0)) is false
+  equal-pickup(cleaned-data.row-n(6)) is true
 end
+#creates table 
+pickup-table = filter-with(cleaned-data, equal-pickup)
+#creates list from new table
+pickup-list = pickup-table.get-column("name")
 
 
 
